@@ -4,13 +4,13 @@
 
 面向 7v7 混合组极限飞盘的入门教学和动作讨论。场景提供正反手握盘与左右手镜像，方便把身前推盘、躯干主导、翻掌等预设与基础动作放在同一视角对比。
 
-[下载 v1.3 HTML](https://github.com/345989/disc-motion-lab/releases/download/v1.3.0/disc-motion-lab-offline-v1.3.html) · [所有版本](https://github.com/345989/disc-motion-lab/releases)
+[下载 v1.3.1 HTML](https://github.com/345989/disc-motion-lab/releases/download/v1.3.1/disc-motion-lab-offline-v1.3.1.html) · [所有版本](https://github.com/345989/disc-motion-lab/releases)
 
 ![三维视图，显示身前推盘与参考动作在释放瞬间的对比](docs/disc-motion-lab-v1.2.png)
 
 ## 开始实验
 
-下载 `disc-motion-lab-offline-v1.3.html`，保存后用浏览器打开。界面、渲染和计算代码都在一个文件里，断网也能运行。WebGL 不可用时会自动切换到 Canvas 兼容视图。
+下载 `disc-motion-lab-offline-v1.3.1.html`，保存后用浏览器打开。界面、渲染和计算代码都在一个文件里，断网也能运行。WebGL 不可用时会自动切换到 Canvas 兼容视图。
 
 1. 选择正手或反手，播放「基础平盘参考」。拖动播放条或跳到释放瞬间，切换俯视、侧视和握盘特写。
 2. 试试「身前推盘」。默认开启的「叠加参考动作」会在同一场景显示灰色参考动作，方便比较关节路径、出手速度和自旋。切换「完整轨迹」，接着看离手后的飞行。
@@ -36,6 +36,7 @@
 
 ## 版本记录
 
+- [v1.3.1 · MIT 许可](https://github.com/345989/disc-motion-lab/releases/tag/v1.3.1) · [更新说明](docs/release-v1.3.1.md)
 - [v1.3.0 · 开源发布](https://github.com/345989/disc-motion-lab/releases/tag/v1.3.0) · [更新说明](docs/release-v1.3.0.md)
 
 - [v1.2.0 · 多轨动作时序](https://github.com/345989/disc-motion-lab/releases/tag/v1.2.0) · [更新说明](docs/release-v1.2.0.md)
@@ -43,6 +44,6 @@
 
 ## 作者与许可
 
-项目由 **345989** 制作，自 v1.3 起采用 [GNU General Public License v3.0](LICENSE)（`GPL-3.0-only`）。欢迎按协议使用、修改和分享，也欢迎到 [Issues](https://github.com/345989/disc-motion-lab/issues) 交流你的实验和建议。
+项目由 **345989** 制作，自 v1.3.1 起采用 [MIT 许可证](LICENSE)。欢迎使用、修改、分享，也可以用于商业用途。分发时请保留版权与许可声明。欢迎到 [Issues](https://github.com/345989/disc-motion-lab/issues) 交流你的实验和建议。
 
 [第三方依赖许可](source/THIRD_PARTY_LICENSES.txt)随 HTML 一并打包。[构建说明](source/MODEL.md#开发与再构建)列出打包依赖的源码。

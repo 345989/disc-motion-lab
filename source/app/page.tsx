@@ -6,7 +6,8 @@ import MotionEditor from '../components/disc/MotionEditor';
 import {Config,Channel,ThrowType,Preset,Simulation,defaultConfig,simulate,samplePose,getRelease,getCommands,validateConfig,serializeSimulation,frameAt,CHANNELS,LABELS,PRESETS,SCHEMA,DEG} from '../lib/disc/engine';
 import {editedTrackCount,TIMING_LIMITS} from '../lib/disc/timing';
 
-declare const GPL_LICENSE_TEXT: string;
+declare const APP_VERSION: string;
+declare const PROJECT_LICENSE_TEXT: string;
 
 function download(name:string,data:string,type='application/json'){const u=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),5000);}
 function Slider({label,value,min,max,step=1,unit='°',onChange,hint}:{label:string;value:number;min:number;max:number;step?:number;unit?:string;onChange:(n:number)=>void;hint?:string}){return <label className="parameter"><span className="param-label">{label}<span className="param-number"><input type="number" value={Number(value.toFixed(5))} min={min} max={max} step={step} aria-label={`${label}数值`} onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n))onChange(Math.min(max,Math.max(min,n)));}}/><small>{unit}</small></span></span><input type="range" min={min} max={max} step={step} value={value} aria-label={label} onChange={e=>onChange(+e.target.value)}/>{hint&&<small className="hint">{hint}</small>}</label>;}
@@ -82,13 +83,13 @@ export default function Home(){
    </aside>
   </div>
   <footer>
-    <div><Box size={14}/><span>连杆运动学 × 刚体飞行 · 离线版 1.3</span></div>
+    <div><Box size={14}/><span>连杆运动学 × 刚体飞行 · 离线版 {APP_VERSION}</span></div>
     <p>教学模型用于理解变量关系，不替代实测动作分析。<button onClick={()=>setModal('model')}>查看假设与研究依据 <ArrowUpRight size={12}/></button></p>
     <section className="project-about" aria-labelledby="project-about-heading">
       <h2 id="project-about-heading">关于作者与开源</h2>
       <p>你好，我是 <a href="https://github.com/345989" target="_blank" rel="noreferrer">345989</a>。希望这个小实验室能陪你看清每一次出手。欢迎到 <a href="https://github.com/345989/disc-motion-lab" target="_blank" rel="noreferrer">GitHub 项目仓库</a> 分享你的想法和实验。</p>
-      <p>© 2026 345989。欢迎按 GNU GPL v3.0 使用、修改和分享本项目。软件按原样提供，适用协议中的无担保条款。</p>
-      <details><summary>查看 GNU GPL v3.0 协议全文</summary><pre tabIndex={0}>{GPL_LICENSE_TEXT}</pre></details>
+      <p>© 2026 345989。欢迎使用、修改和分享本项目，也可以用于商业用途。分发时请保留 MIT 许可与版权声明。</p>
+      <details><summary>查看 MIT 许可证全文</summary><pre tabIndex={0}>{PROJECT_LICENSE_TEXT}</pre></details>
     </section>
   </footer>
   {toast&&<div className="toast" role="status"><Check size={15}/>{toast}</div>}
