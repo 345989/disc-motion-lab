@@ -1,0 +1,51 @@
+footer {
+  flex-wrap: wrap;
+}
+
+.project-about {
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: #435d69;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.project-about h2 {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.project-about p {
+  margin: 6px 0;
+  font-size: inherit;
+}
+
+.project-about a,
+.project-about summary {
+  color: #176f68;
+}
+
+.project-about a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.project-about summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.project-about pre {
+  max-height: 24rem;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  font: 12px/1.6 monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

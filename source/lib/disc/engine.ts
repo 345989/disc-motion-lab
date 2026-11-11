@@ -1,4 +1,5 @@
 import {Vector3 as V, Quaternion as Q} from 'three';
+import {sourcePhase, validateTiming, type Timing} from './timing.ts';
 
 export const DEG = Math.PI / 180;
 export type ThrowType = 'backhand'|'forehand';
@@ -14,7 +15,7 @@ export type Config = {
  rootX:number;rootZ:number;heading:number;offsets:Record<Channel,number>;
  discMass:number;radius:number;inertiaAxial:number;inertiaTransverse:number;gripAngle:number;discPitch:number;discRoll:number;discYaw:number;
  air:boolean;rho:number;windX:number;windZ:number;liftScale:number;dragScale:number;momentScale:number;pitchDamping:number;rollDamping:number;spinDamping:number;
- commands:Commands|null;
+ commands:Commands|null; timing?:Timing;
 };
 export type Pose={pelvis:V;chest:V;shoulder:V;otherShoulder:V;elbow:V;wrist:V;grip:V;center:V;normal:V;discQ:Q;handQ:Q;torsoQ:Q;pelvisQ:Q;upperQ:Q;foreQ:Q;angles:Record<Channel,number>};
 export type Release={pose:Pose;v:V;omega:V;spin:number;offAxis:number;speed:number;azimuth:number;elevation:number;energy:number;armEnergy:number;trunkEnergy:number;contributions:{key:Channel;value:number}[]};
@@ -65,7 +66,10 @@ export function interpolate(k:Keyframe[],t:number):number{
  const slope=(j:number)=>j===0||j===k.length-1?0:(k[j+1].value-k[j-1].value)/(k[j+1].t-k[j-1].t);
  return (2*u**3-3*u*u+1)*a.value+(u**3-2*u*u+u)*span*slope(i)+(-2*u**3+3*u*u)*b.value+(u**3-u*u)*span*slope(i+1);
 }
-export function sampleAngles(c:Config,phase:number){const commands=getCommands(c);return Object.fromEntries(CHANNELS.map(k=>[k,interpolate(commands[k],phase)+c.offsets[k]])) as Record<Channel,number>;}
+export function sampleAngles(c:Config,phase:number){
+ const commands=getCommands(c);
+ return Object.fromEntries(CHANNELS.map(k=>[k,interpolate(commands[k],sourcePhase(phase,c.timing?.[k]))+c.offsets[k]])) as Record<Channel,number>;
+}
 const qAxis=(axis:V,deg:number)=>new Q().setFromAxisAngle(axis,deg*DEG);
 function chain(c:Config,a:Record<Channel,number>,align:number):Pose{
  const root=new V(c.rootX,c.hipHeight,c.rootZ);
@@ -158,6 +162,8 @@ export function validateConfig(value:unknown):Config{
  if(typeof v.air!=='boolean')throw new Error('air 必须为布尔值');c.air=v.air;c.handedness=v.handedness as Config['handedness'];
  for(const key of CHANNELS){const n=(v.offsets as Record<string,unknown>)?.[key];if(typeof n!=='number'||!Number.isFinite(n)||Math.abs(n)>180)throw new Error(`offsets.${key} 超出 ±180°`);c.offsets[key]=n;}
  if(v.commands!=null){const cmds={} as Commands;for(const key of CHANNELS){const arr=(v.commands as Record<string,unknown>)[key];if(!Array.isArray(arr)||arr.length<2||arr.length>40)throw new Error(`${key}: 需要 2～40 个关键帧`);cmds[key]=arr.map((x,i)=>{if(!x||typeof x.t!=='number'||typeof x.value!=='number'||!Number.isFinite(x.t)||!Number.isFinite(x.value)||x.t<0||x.t>2||Math.abs(x.value)>360||(i>0&&(x.t-arr[i-1].t<.005||Math.abs(x.value-arr[i-1].value)/(x.t-arr[i-1].t)>1800)))throw new Error(`${key}: 时间步距≥0.005，相邻角度变化率≤1800°/相位，t∈[0,2]，角度∈[−360,360]`);return {t:x.t,value:x.value};});}c.commands=cmds;}
+ const timing=validateTiming(v.timing,getCommands(c),CHANNELS);
+ if(timing)c.timing=timing;
  return c;
 }
 export function serializeSimulation(sim:Simulation){return {config:sim.config,release:{position:sim.release.pose.center.toArray(),quaternion:sim.release.pose.discQ.toArray(),velocity:sim.release.v.toArray(),angularVelocity:sim.release.omega.toArray(),speed:sim.release.speed,spin:sim.release.spin,energy:sim.release.energy,armEnergy:sim.release.armEnergy,trunkEnergy:sim.release.trunkEnergy,contributions:sim.release.contributions},metrics:{distance:sim.distance,lateral:sim.lateral,flightTime:sim.flightTime,outOfRange:sim.outOfRange,landed:sim.landed},frames:sim.frames.map(f=>({t:f.t,p:f.p.toArray(),v:f.v.toArray(),quaternion:f.q.toArray(),angularMomentum:f.L.toArray(),angularVelocity:f.omega.toArray(),alpha:f.alpha,outOfRange:f.outOfRange}))};}

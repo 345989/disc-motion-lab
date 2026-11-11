@@ -9,6 +9,7 @@
 - “完整轨迹”显示动作加全部飞行，其余视角聚焦动作。
 - 参数面板调整时序、各关节角偏置、连杆长度、质量惯量、握盘变换、环境与气动参数。
 - 运动指令面板编辑 `t/value` 关键帧；相位 `1` 是参考释放点。
+- 在「关节相对时序」平移或伸缩各轨曲线，时间变换随配置的 `timing` 字段保存。每轨使用 `globalPhase = sourcePhase * scale + shift`，释放点由独立的 `releasePhase` 决定。
 - JSON 保存或导入完整配置，CSV 导出飞行轨迹。
 - 浏览器控制台开放 `window.DiscLab`：`getConfig()`、`setConfig(config)`、`getSchema()`、`samplePose(phase)`、`simulate(config?)`。
 
@@ -35,15 +36,22 @@
 - `lib/disc/engine.ts` — 运动学、气动、刚体积分、配置校验、序列化。
 - `components/disc/Scene.tsx` — Three.js 连杆/转轴/盘面、相机与轨迹。
 - `app/page.tsx` — 参数、关键帧编辑器、数据接口、图表与说明。
+- `components/disc/MotionEditor.tsx`、`lib/disc/timing.ts` — 多轨编辑器与时序变换。
 - `tests/physics.test.ts` — 物理不变量、镜像、释放连续、步长收敛与配置校验。
 
 ## 开发与再构建
 
 直接运行成品只需打开 HTML 文件，不需要以下开发步骤。
-修改源码后可在本目录执行 `npm install` 与 `npm run build` 重新生成单文件版本。
+在 Node.js 22.18+ 下，在本目录执行 `npm install` 与 `npm run build`，即可在 `dist/` 重新生成单文件版本。使用 pnpm 时可通过 `pnpm install --frozen-lockfile` 安装锁定的依赖。
 运行 `npm test` 验证物理不变量；`npm run typecheck` 做类型检查。
 依赖均在生成时打包到文件中，运行时无 CDN、无服务器、无登录。
 WebGL 无法使用时自动切换 Canvas 三维投影绘制；两种绘制模式共享同一套物理计算。
+
+构建使用的第三方源码版本如下。React 和 React DOM 来自同一源码树，Scheduler 随 React DOM 安装。各依赖的许可见 [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt)。
+
+- [React 19.2.6（含 React DOM、Scheduler）](https://github.com/facebook/react/tree/v19.2.6)
+- [Three.js r180](https://github.com/mrdoob/three.js/tree/r180)
+- [Lucide React 1.31.0](https://github.com/lucide-icons/lucide/tree/1.31.0)
 
 ## 原始来源
 

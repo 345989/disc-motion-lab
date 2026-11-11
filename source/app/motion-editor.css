@@ -1,0 +1,502 @@
+/* v1.2: isolated styles for the additive joint timing editor. */
+.motion-editor {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+  --track-label: 101px;
+}
+.motion-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 8px;
+  gap: 8px;
+}
+.motion-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.motion-heading svg {
+  color: #71948d;
+}
+.motion-heading h2 {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.motion-heading > div > span {
+  font-size: 8px;
+  color: #8d9fa6;
+}
+.motion-collapse {
+  padding: 3px;
+  display: grid;
+  place-items: center;
+}
+.motion-intro {
+  font-size: 9px;
+  line-height: 1.7;
+  color: #879ba2;
+  padding: 0 14px 6px;
+}
+.motion-axis-row {
+  display: grid;
+  grid-template-columns: var(--track-label) minmax(0, 1fr);
+  padding: 0 14px;
+  align-items: end;
+}
+.motion-axis-row > span {
+  font-size: 8px;
+  color: #91a3a9;
+  padding-bottom: 8px;
+}
+.motion-axis {
+  height: 43px;
+  position: relative;
+  min-width: 0;
+}
+.motion-axis > span {
+  position: absolute;
+  bottom: 7px;
+  font-size: 8px;
+  color: #8c9fa6;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+}
+.motion-axis > span:first-of-type {
+  transform: none;
+}
+.motion-axis > small {
+  position: absolute;
+  right: 0;
+  bottom: 7px;
+  font-size: 7px;
+  color: #a1b0b5;
+}
+.motion-release-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-70%);
+  padding: 4px 5px;
+  border-radius: 4px;
+  background: #fff5e6;
+  color: #a67938;
+  font-size: 8px;
+  white-space: nowrap;
+  z-index: 1;
+}
+.motion-tracks {
+  padding: 0 14px;
+}
+.motion-row {
+  display: grid;
+  grid-template-columns: var(--track-label) minmax(0, 1fr);
+  border-top: 1px solid #edf1f2;
+  min-height: 62px;
+}
+.motion-track-name {
+  text-align: left;
+  min-width: 0;
+  padding: 8px 4px 8px 0;
+  align-self: stretch;
+  line-height: 1.7;
+}
+.motion-track-name b {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #5e7a86;
+}
+.motion-track-name i {
+  width: 5px;
+  height: 5px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--track-color);
+}
+.motion-track-name small {
+  display: block;
+  font-size: 8px;
+  color: #a3b0b5;
+  padding-left: 10px;
+}
+.motion-row.is-selected .motion-track-name b {
+  color: var(--track-color);
+}
+.motion-row.is-selected .motion-lane {
+  background-color: #f5f9f9;
+}
+.motion-lane {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #fbfcfc;
+  isolation: isolate;
+}
+.motion-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #e9eff0;
+  pointer-events: none;
+}
+.motion-curve {
+  position: absolute;
+  inset: 5px 0;
+  width: 100%;
+  height: 52px;
+  color: var(--track-color);
+  opacity: 0.42;
+  pointer-events: none;
+}
+.motion-curve circle {
+  fill: currentColor;
+}
+.motion-clip {
+  position: absolute;
+  top: 17px;
+  height: 29px;
+  display: flex;
+  min-width: 0;
+  background: #edf6f4;
+  border: 1px solid var(--track-color);
+  border-radius: 5px;
+  box-shadow: 0 2px 3px #214b4a07;
+  color: var(--track-color);
+  z-index: 1;
+  touch-action: none;
+}
+.motion-row:nth-child(2) .motion-clip {
+  background: #f0f5fa;
+}
+.motion-row:nth-child(3) .motion-clip {
+  background: #fff5e7;
+}
+.motion-row.is-dragging .motion-clip {
+  box-shadow: 0 3px 9px #244c4a22;
+}
+.motion-handle {
+  width: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: ew-resize;
+  color: var(--track-color);
+  touch-action: none;
+}
+.motion-handle span {
+  height: 11px;
+  width: 3px;
+  border-left: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+  opacity: 0.7;
+}
+.motion-handle.start {
+  border-right: 1px solid #173c4217;
+}
+.motion-handle.end {
+  border-left: 1px solid #173c4217;
+}
+.motion-clip-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 1px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  color: inherit;
+}
+.motion-clip-body:active {
+  cursor: grabbing;
+}
+.motion-clip-body span {
+  font-size: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.motion-clip-body svg {
+  opacity: 0.7;
+}
+.motion-clip button:focus-visible {
+  outline-offset: -2px;
+  outline-color: var(--track-color);
+}
+.motion-release-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed #bd8c45;
+  z-index: 2;
+  pointer-events: none;
+}
+.motion-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #25464c;
+  opacity: 0.5;
+  z-index: 3;
+  pointer-events: none;
+}
+.motion-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  gap: 8px;
+  border-top: 1px solid #edf1f2;
+}
+.motion-tools button {
+  padding: 3px 0;
+  font-size: 8px;
+  color: #648d89;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.motion-tools button:disabled,
+.motion-selection button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.motion-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 10px 14px;
+  background: #f6f9f9;
+  border-top: 1px solid #e8efef;
+}
+.motion-selection > b {
+  font-size: 9px;
+  font-weight: 500;
+  min-width: 78px;
+}
+.motion-selection label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+  color: #8399a1;
+}
+.motion-selection label > span {
+  display: flex;
+  align-items: center;
+  border: 1px solid #dae5e7;
+  border-radius: 4px;
+  background: white;
+  padding: 3px 5px;
+  gap: 3px;
+}
+.motion-selection input {
+  width: 45px;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #4f707a;
+  font-size: 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.motion-selection input::-webkit-inner-spin-button {
+  display: none;
+}
+.motion-selection input:focus-visible {
+  outline: 1px solid var(--teal);
+  outline-offset: 3px;
+}
+.motion-selection small {
+  font-size: 8px;
+  color: #99aab1;
+}
+.motion-selection button {
+  font-size: 8px;
+  color: #6c8f91;
+  margin-left: auto;
+  padding: 4px 0;
+}
+.motion-detail {
+  padding: 7px 14px 0;
+  color: #9babb1;
+  font-size: 8px;
+  line-height: 1.8;
+}
+.motion-detail strong {
+  display: block;
+  font-weight: 400;
+  color: #a17f4a;
+}
+.motion-help {
+  padding: 8px 14px 12px;
+  font-size: 8px;
+  color: #8fa1a8;
+  line-height: 1.9;
+}
+.motion-help summary {
+  cursor: pointer;
+  color: #72978f;
+}
+.motion-help p {
+  padding-top: 7px;
+}
+.motion-status {
+  display: block;
+  font-size: 8px;
+  color: #6e9287;
+  padding: 0 14px 10px;
+  min-height: 0;
+}
+.motion-status:empty {
+  display: none;
+}
+@media (min-width: 1500px) {
+  .motion-editor {
+    --track-label: 118px;
+  }
+  .motion-track-name b {
+    font-size: 10px;
+  }
+  .motion-clip-body span {
+    font-size: 8px;
+  }
+}
+@media (max-width: 1180px) and (min-width: 701px) {
+  .motion-editor {
+    --track-label: 82px;
+  }
+  .motion-tracks,
+  .motion-axis-row {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .motion-track-name b {
+    font-size: 8px;
+  }
+  .motion-clip-body span {
+    display: none;
+  }
+  .motion-heading > div > span {
+    display: none;
+  }
+  .motion-selection {
+    gap: 8px;
+  }
+  .motion-selection > b {
+    width: 100%;
+  }
+}
+@media (max-width: 700px) {
+  .motion-editor {
+    margin-top: 13px;
+    --track-label: 89px;
+  }
+  .motion-heading {
+    padding: 14px 12px 8px;
+  }
+  .motion-heading h2 {
+    font-size: 12px;
+  }
+  .motion-heading > div > span {
+    font-size: 8px;
+  }
+  .motion-intro {
+    padding: 0 12px 6px;
+    font-size: 10px;
+  }
+  .motion-tracks,
+  .motion-axis-row {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .motion-row {
+    min-height: 72px;
+  }
+  .motion-track-name b {
+    font-size: 9px;
+  }
+  .motion-track-name small {
+    font-size: 8px;
+  }
+  .motion-clip {
+    top: 15px;
+    height: 42px;
+  }
+  .motion-handle {
+    width: 19px;
+    flex-basis: 19px;
+  }
+  .motion-clip-body span {
+    display: none;
+  }
+  .motion-clip-body svg {
+    width: 12px;
+  }
+  .motion-curve {
+    top: 10px;
+  }
+  .motion-tools {
+    padding: 10px 12px;
+  }
+  .motion-tools button {
+    font-size: 9px;
+    min-height: 27px;
+  }
+  .motion-selection {
+    padding: 12px;
+    gap: 10px;
+  }
+  .motion-selection > b {
+    width: 100%;
+    font-size: 10px;
+  }
+  .motion-selection label {
+    font-size: 10px;
+  }
+  .motion-selection label > span {
+    padding: 6px;
+  }
+  .motion-selection input {
+    font-size: 12px;
+    width: 50px;
+  }
+  .motion-selection button {
+    font-size: 9px;
+    min-height: 30px;
+  }
+  .motion-detail,
+  .motion-help,
+  .motion-status {
+    font-size: 9px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .motion-axis-row > span {
+    font-size: 9px;
+  }
+  .motion-release-label {
+    font-size: 8px;
+  }
+  .motion-status {
+    padding-bottom: 12px;
+  }
+}
