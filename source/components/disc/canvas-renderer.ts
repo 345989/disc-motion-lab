@@ -1,5 +1,6 @@
 import {PerspectiveCamera,Vector3 as V,Quaternion as Q} from 'three';
-import {samplePose,frameAt,Config,Simulation,Pose} from '../../lib/disc/engine';
+import {samplePose,discStateAt,Config,Simulation,Pose} from '../../lib/disc/engine';
+import {contactPositions} from '../../lib/disc/grip';
 export type CanvasView='perspective'|'top'|'side'|'front'|'flight'|'grip';
 export type CanvasOptions={config:Config;sim:Simulation;reference:Simulation|null;time:number;showAxes:boolean;showTrace:boolean;showLabels:boolean;compare:boolean};
 export function positionCamera(camera:PerspectiveCamera,target:V,config:Config,sim:Simulation,view:CanvasView){
@@ -8,7 +9,10 @@ export function positionCamera(camera:PerspectiveCamera,target:V,config:Config,s
  if(view==='side')delta.set(0,.15,5.5);
  if(view==='front')delta.set(5,.25,0);
  if(view==='flight'){const extent=Math.max(5,sim.distance);target.copy(sim.release.pose.center).lerp(sim.frames.at(-1)!.p,.45);target.y=.8;delta.set(-extent*.22,extent*.58,extent*.70);}
- if(view==='grip'){target.copy(sim.release.pose.center).lerp(sim.release.pose.wrist,.4);delta.set(.52,.5,.7);}
+ if(view==='grip'){
+  target.copy(sim.release.pose.center).lerp(sim.release.pose.wrist,.4);delta.set(.52,.5,.7);
+  if(config.grip?.enabled){delta.copy(sim.release.pose.center).sub(sim.release.pose.chest);delta.y=0;if(delta.length()<.01)delta.set(.5,0,.7);delta.normalize().multiplyScalar(.75);delta.y=.55;}
+ }
  camera.position.copy(target).add(delta);camera.lookAt(target);camera.updateMatrixWorld();
 }
 type Shape={depth:number;draw:()=>void};
@@ -27,9 +31,9 @@ export function drawCanvasScene(ctx:CanvasRenderingContext2D,width:number,height
  arrow(new V(-1,.015,0),new V(1,0,0),4,'#a7babc');ring(new V(o.config.rootX,.016,o.config.rootZ),.34,new Q(),'#a2b6bd');
  // Ground grid is a background plane; draw before elevated geometry.
  shapes.sort((a,b)=>b.depth-a.depth);shapes.forEach(s=>s.draw());shapes.length=0;
- if(o.showTrace){path(Array.from({length:110},(_,i)=>samplePose(o.config,o.config.releasePhase*i/109).center),'#21ac9e',1.4);path(o.sim.frames.filter((_,i)=>i%2===0).map(f=>f.p),'#e6a05c',1.5);path(o.sim.frames.filter((_,i)=>i%3===0).map(f=>new V(f.p.x,.01,f.p.z)),'#bbc9cc',1,true);if(o.compare&&o.reference){path(o.reference.frames.map(f=>f.p),'#9baeb7',1,true);path(Array.from({length:90},(_,i)=>samplePose(o.reference!.config,o.reference!.config.releasePhase*i/89).center),'#9baeb7',1,true);}}
+ if(o.showTrace){path(Array.from({length:110},(_,i)=>discStateAt(o.sim,o.sim.releaseTime*i/109).p),'#21ac9e',1.4);path(o.sim.frames.filter((_,i)=>i%2===0).map(f=>f.p),'#e6a05c',1.5);path(o.sim.frames.filter((_,i)=>i%3===0).map(f=>new V(f.p.x,.01,f.p.z)),'#bbc9cc',1,true);if(o.compare&&o.reference){path(o.reference.frames.map(f=>f.p),'#9baeb7',1,true);path(Array.from({length:90},(_,i)=>samplePose(o.reference!.config,o.reference!.config.releasePhase*i/89).center),'#9baeb7',1,true);}}
  const body=(c:Config,sim:Simulation,ghost=false)=>{
-  const p=samplePose(c,Math.min(o.time/c.duration,1.35));const flight=o.time>sim.releaseTime?frameAt(sim,o.time-sim.releaseTime):null,dp=flight?.p??p.center,dq=flight?.q??p.discQ;
+  const p=samplePose(c,Math.min(o.time/c.duration,1.35));const actual=discStateAt(sim,o.time),flight=o.time>sim.releaseTime,dp=actual.p,dq=actual.q;
   const ink=ghost?'#a8b6c164':'#66808f',teal=ghost?'#92a9b775':'#29b7a7',pale=ghost?'#b6c5cf80':'#e1fcf5';
   const footA=new V(-.08,-c.hipHeight,.22).applyQuaternion(p.pelvisQ).add(p.pelvis),footB=new V(.14,-c.hipHeight,-.22).applyQuaternion(p.pelvisQ).add(p.pelvis);footA.y=footB.y=.055;
   const hipA=new V(0,0,.14).applyQuaternion(p.pelvisQ).add(p.pelvis),hipB=new V(0,0,-.14).applyQuaternion(p.pelvisQ).add(p.pelvis),kneeA=footA.clone().lerp(hipA,.52).add(new V(.08,0,0)),kneeB=footB.clone().lerp(hipB,.52).add(new V(.08,0,0));
@@ -43,8 +47,8 @@ export function drawCanvasScene(ctx:CanvasRenderingContext2D,width:number,height
   const head=p.chest.clone().add(new V(0,.2,0));rod(p.chest,head,.022,ink);dot(head,.095,ink);rod(head,head.clone().add(new V(.09,0,0).applyQuaternion(p.torsoQ)),.018,ghost?'#8fa7b550':'#3b5c6c');
   const disc=Array.from({length:49},(_,i)=>new V(Math.cos(i*Math.PI/24)*c.radius,0,Math.sin(i*Math.PI/24)*c.radius).applyQuaternion(dq).add(dp));
   path(disc,ghost?'#9caeba90':'#e5a45f',2,false,ghost?'#e4eef280':'#f9fcfd');ring(dp,c.radius*.72,dq,ghost?'#8ba3b450':'#8d9fa7');rod(dp,dp.clone().add(new V(c.radius*.82,.005,0).applyQuaternion(dq)),.004,teal);dot(dp,.008,ghost?'#b2bdc3':'#e49d4f');
-  if(!flight){dot(p.grip,.02,ghost?'#a5b9c4':'#e7983f');const rad=p.grip.clone().sub(p.center);dot(p.center.clone().addScaledVector(rad,.88).addScaledVector(p.normal,.025),.013,ghost?'#abbfca':'#e5bb87');dot(p.center.clone().addScaledVector(rad,.89).addScaledVector(p.normal,-.025),.014,ghost?'#abbfca':'#e5bb87');}
-  if(o.showAxes&&!ghost){const points=[p.pelvis,p.chest,p.shoulder,p.elbow,p.wrist],qs=[p.pelvisQ,p.torsoQ,p.upperQ,p.upperQ,p.foreQ];points.forEach((a,i)=>{ring(a,i===0?.14:.075,qs[i],'#37b2a980');line(a.clone().add(new V(0,-.1,0).applyQuaternion(qs[i])),a.clone().add(new V(0,.1,0).applyQuaternion(qs[i])),'#3da99f70');});arrow(dp,new V(0,1,0).applyQuaternion(dq),.33,'#7b8ce3');const phase=Math.min(o.time/c.duration,1.35),step=.00002,velocity=flight?.v??samplePose(c,phase+step).center.sub(samplePose(c,phase-step).center).divideScalar(2*step*c.duration);if(velocity.length()>1e-5)arrow(dp,velocity,Math.min(velocity.length()*.075,.95),'#e59d4d');}
+  if(!flight){dot(p.grip,.02,ghost?'#a5b9c4':'#e7983f');contactPositions(c,p).forEach((point,i)=>dot(point,.014,ghost?'#abbfca':['#208e82','#bc7533','#527ca5'][i]));}
+  if(o.showAxes&&!ghost){const points=[p.pelvis,p.chest,p.shoulder,p.elbow,p.wrist],qs=[p.pelvisQ,p.torsoQ,p.upperQ,p.upperQ,p.foreQ];points.forEach((a,i)=>{ring(a,i===0?.14:.075,qs[i],'#37b2a980');line(a.clone().add(new V(0,-.1,0).applyQuaternion(qs[i])),a.clone().add(new V(0,.1,0).applyQuaternion(qs[i])),'#3da99f70');});arrow(dp,new V(0,1,0).applyQuaternion(dq),.33,'#7b8ce3');const velocity=actual.v;if(velocity.length()>1e-5)arrow(dp,velocity,Math.min(velocity.length()*.075,.95),'#e59d4d');}
   return {p,dp,flight};
  };
  if(o.compare&&o.reference)body(o.reference.config,o.reference,true);const current=body(o.config,o.sim);

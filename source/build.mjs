@@ -17,7 +17,7 @@ const result=await build({
   logLevel:'warning',
 });
 const script=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
-const styles=['globals.css','motion-editor.css','project-about.css'];
+const styles=['globals.css','motion-editor.css','project-about.css','grip.css'];
 const css=(await Promise.all(styles.map(file=>fs.readFile(path.join(here,'app',file),'utf8'))))
   .join('\n').replace(/<\/style/gi,'<\\/style');
 if(/@import|url\(\s*["']?https?:/i.test(css))throw new Error('CSS contains a network dependency');

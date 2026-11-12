@@ -4,18 +4,33 @@
 
 面向 7v7 混合组极限飞盘的入门教学和动作讨论。场景提供正反手握盘与左右手镜像，方便把身前推盘、躯干主导、翻掌等预设与基础动作放在同一视角对比。
 
-[下载 v1.3.1 HTML](https://github.com/345989/disc-motion-lab/releases/download/v1.3.1/disc-motion-lab-offline-v1.3.1.html) · [所有版本](https://github.com/345989/disc-motion-lab/releases)
+[下载 v1.4.0 HTML](https://github.com/345989/disc-motion-lab/releases/download/v1.4.0/disc-motion-lab-offline-v1.4.0.html) · [下载开发者包](https://github.com/345989/disc-motion-lab/releases/download/v1.4.0/disc-motion-lab-developer-kit-v1.4.0.zip) · [所有版本](https://github.com/345989/disc-motion-lab/releases)
+
+**飞盘爱好者**：下载一个 HTML，打开就能实验。**希望共同开发的程序员**：下载开发者包或克隆仓库，获取 TypeScript 源码、依赖锁文件、构建方法、测试和模型说明。
 
 ![三维视图，显示身前推盘与参考动作在释放瞬间的对比](docs/disc-motion-lab-v1.2.png)
 
 ## 开始实验
 
-下载 `disc-motion-lab-offline-v1.3.1.html`，保存后用浏览器打开。界面、渲染和计算代码都在一个文件里，断网也能运行。WebGL 不可用时会自动切换到 Canvas 兼容视图。
+下载 `disc-motion-lab-offline-v1.4.0.html`，保存后用浏览器打开。界面、渲染和计算代码都在一个文件里，断网也能运行。WebGL 不可用时会自动切换到 Canvas 兼容视图。
 
 1. 选择正手或反手，播放「基础平盘参考」。拖动播放条或跳到释放瞬间，切换俯视、侧视和握盘特写。
 2. 试试「身前推盘」。默认开启的「叠加参考动作」会在同一场景显示灰色参考动作，方便比较关节路径、出手速度和自旋。切换「完整轨迹」，接着看离手后的飞行。
 3. 将「手腕 · 出盘」色块往后拖，重看释放瞬间。观察同一动作中单独延后手腕，对盘速、自旋、方向和落点有什么影响。
 4. 调整连杆尺寸、关节角、握点、盘面俯仰／滚转／偏航、释放相位或风速。可关闭空气对照真空抛物线，也可保存配置、轨迹 CSV 或完整模拟 JSON。
+5. 打开「握持与摩擦」，开启「真实握盘」。调整握力、静动摩擦系数，拖动手指接触点，比较飞盘能否跟随原定动作、何时滑动以及实际出手结果。
+
+## 握持与摩擦 · v1.4 新增
+
+**开启真实握盘**，每个接触点按自己的法向载荷和摩擦系数传力。静摩擦能力不足时，飞盘会相对手部平移、转动；接触点全部滑出盘缘后提前脱手，并从实际状态接续飞行。
+
+**关闭真实握盘**，沿原有动作反算所需摩擦力和总法向力。握力曲线、各点受力、首次滑动时刻与相对位移可直接查看，握盘数据也可以导出为 CSV。
+
+点击「编辑手指接触位置」，在单独弹窗中拖动拇指、食指和中指的有效接触点，也可输入坐标与受力权重。布局随正反手和左右手变化，并随配置 JSON 保存。
+
+![二维接触点编辑器，可拖动三个手指并修改坐标与受力权重](docs/contact-editor-v1.4.png)
+
+这一版采用平面有限摩擦接触模型：计算盘内滑移与相对转动，法向支撑、俯仰和滚转由手部理想引导。默认总法向力 20 N、静／动摩擦系数 0.6／0.5 是参考文献量级选择的可调初值，依据和公式见 [握持模型说明](source/GRIP_MODEL.md)。
 
 ## 多轨动作时序
 
@@ -27,15 +42,17 @@
 
 ## 模型与开发
 
-手持阶段用关键帧驱动三维关节链，按正反手各自的盘缘握点约束飞盘。离手时将盘心位置、姿态、线速度和角速度交给六自由度刚体模型。飞行中的升力、阻力和俯仰力矩采用 Hummel 附录收录的 Potts／Crowther 数据近似。内置动作曲线用于教学示意。公式、坐标、单位和研究来源见 [模型说明](source/MODEL.md)。
+手持阶段用关键帧驱动三维关节链，采用理想握持或有限摩擦接触。离手时将盘心位置、姿态、线速度和角速度交给六自由度刚体模型。飞行中的升力、阻力和俯仰力矩采用 Hummel 附录收录的 Potts／Crowther 数据近似。内置动作曲线用于教学示意。公式、坐标、单位和研究来源见 [模型说明](source/MODEL.md)。
 
-- [配置示例](sample-configs/)提供正反手参考、反手推盘和正手翻掌。
+- [配置示例](sample-configs/)提供正反手参考、反手推盘、正手翻掌，以及开启真实握盘的滑移实验。
 - 「运动指令」面板可编辑关节的基础关键帧。各轨时序写入可选 `timing` 字段，按 `globalPhase = sourcePhase * scale + shift` 应用。v1.1 和 v1.2 的配置可以直接导入。
-- 浏览器控制台的 `window.DiscLab` 提供 `getConfig()`、`setConfig(config)`、`getSchema()`、`samplePose(phase)` 和 `simulate(config?)`。
-- [`source/`](source/) 包含 v1.3 的 TypeScript 源码、构建脚本和物理测试。使用 Node.js 22.18+，在该目录运行 `npm install` 和 `npm run build`，即可在 `source/dist/` 重新生成单文件 HTML。运行 `npm test` 可检查物理模型。
+- 浏览器控制台的 `window.DiscLab` 提供配置与模拟接口，新增 `analyzeGrip(config?)` 和 `sampleState(seconds)`；原有 `samplePose(phase)` 继续返回预定动作。
+- [`source/`](source/) 包含完整 TypeScript 源码、依赖锁文件、构建脚本和 21 项物理测试。使用 Node.js 22.18+，按 [开发指南](source/README.md) 安装依赖、运行检查并生成单文件 HTML。
+- 每个新版 Release 同时提供离线 HTML、开发者 ZIP 和 SHA-256 校验文件。开发者包包含源码、构建资料、模型说明、示例配置与许可证；首次安装依赖需要联网。
 
 ## 版本记录
 
+- [v1.4.0 · 握持、摩擦与滑移](https://github.com/345989/disc-motion-lab/releases/tag/v1.4.0) · [更新说明](docs/release-v1.4.0.md)
 - [v1.3.1 · MIT 许可](https://github.com/345989/disc-motion-lab/releases/tag/v1.3.1) · [更新说明](docs/release-v1.3.1.md)
 - [v1.3.0 · 开源发布](https://github.com/345989/disc-motion-lab/releases/tag/v1.3.0) · [更新说明](docs/release-v1.3.0.md)
 

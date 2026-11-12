@@ -3,7 +3,8 @@ import {useEffect,useRef,useState} from 'react';
 import * as T from 'three';
 import CanvasScene from './CanvasScene';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
-import {samplePose,frameAt,Pose,Config,Simulation,DEG} from '../../lib/disc/engine';
+import {samplePose,frameAt,discStateAt,Pose,Config,Simulation,DEG} from '../../lib/disc/engine';
+import {contactPositions} from '../../lib/disc/grip';
 export type View='perspective'|'top'|'side'|'front'|'flight'|'grip';
 type Props={config:Config;sim:Simulation;reference:Simulation|null;time:number;view:View;cameraNonce:number;showAxes:boolean;showTrace:boolean;showLabels:boolean;compare:boolean};
 const MAIN=0x17b8aa,ORANGE=0xf49b45,INK=0x536e80;
@@ -25,12 +26,12 @@ function makeBody(ghost=false){
  const hub=new T.Mesh(new T.CylinderGeometry(.07,.07,.17,20),material(ghost?0x8299aa:ORANGE,ghost));disc.add(hub);group.add(disc);
  const grip=new T.Mesh(new T.SphereGeometry(.022,16,12),material(ORANGE,ghost));group.add(grip);
  const palm=new T.Mesh(new T.BoxGeometry(.095,.025,.065),material(ghost?0x8198aa:0xbcded6,ghost));group.add(palm);
- const thumb=new T.Mesh(new T.SphereGeometry(.014,12,8),material(0xe8bb83,ghost)),finger=new T.Mesh(new T.SphereGeometry(.016,12,8),material(0xe8bb83,ghost));group.add(thumb,finger);
+ const fingers=[0x208e82,0xbc7533,0x527ca5].map(color=>new T.Mesh(new T.SphereGeometry(.014,12,8),material(ghost?0x8198aa:color,ghost)));group.add(...fingers);
  const axes:T.Group[]=[];
  for(let i=0;i<6;i++){const g=new T.Group(),ring=new T.Mesh(new T.TorusGeometry(i===0?.14:.075,.0025,6,48),new T.MeshBasicMaterial({color:i===5?ORANGE:MAIN,transparent:true,opacity:ghost?.15:.65}));ring.rotation.x=Math.PI/2;g.add(ring);const shaft=new T.Mesh(new T.CylinderGeometry(.002,.002,.23,6),new T.MeshBasicMaterial({color:MAIN,transparent:true,opacity:.5}));g.add(shaft);axes.push(g);group.add(g);}
  const velocity=new T.ArrowHelper(v(1,0,0),v(),.6,0xf39a43,.10,.055),normal=new T.ArrowHelper(v(0,1,0),v(),.33,0x6d86ed,.06,.035);group.add(velocity,normal);
  function bone(i:number,a:T.Vector3,b:T.Vector3,r:number){const o=bones[i],d=b.clone().sub(a);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(v(0,1,0),d.clone().normalize());o.scale.set(r,d.length(),r);}
- const update=(p:Pose,c:Config,free:{p:T.Vector3;q:T.Quaternion;v:T.Vector3}|null,axesVisible:boolean,heldVelocity?:T.Vector3)=>{
+ const update=(p:Pose,c:Config,free:{p:T.Vector3;q:T.Quaternion;v:T.Vector3}|null,axesVisible:boolean,heldVelocity?:T.Vector3,held?:{p:T.Vector3;q:T.Quaternion})=>{
   const bodyq=p.pelvisQ,footA=new T.Vector3(-.08,-c.hipHeight,.22).applyQuaternion(bodyq).add(p.pelvis),footB=new T.Vector3(.14,-c.hipHeight,-.22).applyQuaternion(bodyq).add(p.pelvis);footA.y=footB.y=.055;
   const hipA=new T.Vector3(0,0,.14).applyQuaternion(bodyq).add(p.pelvis),hipB=new T.Vector3(0,0,-.14).applyQuaternion(bodyq).add(p.pelvis);
   const kneeA=footA.clone().lerp(hipA,.52).add(v(.08,0,0)),kneeB=footB.clone().lerp(hipB,.52).add(v(.08,0,0));
@@ -40,11 +41,10 @@ function makeBody(ghost=false){
   [p.pelvis,p.chest,p.shoulder,p.elbow,p.wrist,p.grip,hipA,hipB,kneeA,kneeB,p.otherShoulder].forEach((pt,i)=>{joints[i].position.copy(pt);joints[i].scale.setScalar(i===0?.065:i===3?.043:.035);});
   head.position.copy(p.chest).add(v(0,.20,0));head.quaternion.copy(p.torsoQ);face.position.copy(head.position).add(new T.Vector3(.073,0,0).applyQuaternion(p.torsoQ));face.quaternion.copy(p.torsoQ);
   torso.position.copy(p.pelvis).lerp(p.chest,.58);torso.quaternion.copy(p.torsoQ);torso.scale.y=(c.shoulderHeight-c.hipHeight)*.72;
-  disc.position.copy(free?.p??p.center);disc.quaternion.copy(free?.q??p.discQ);disc.scale.setScalar(c.radius);
+  disc.position.copy(free?.p??held?.p??p.center);disc.quaternion.copy(free?.q??held?.q??p.discQ);disc.scale.setScalar(c.radius);
   grip.position.copy(p.grip);grip.visible=!free;
   palm.position.copy(p.wrist).lerp(p.grip,.65);palm.quaternion.copy(p.handQ);if(c.throwType==='backhand')palm.rotateX(Math.PI/2);
-  const g=p.grip.clone().sub(p.center),n=p.normal;
-  thumb.position.copy(p.center).addScaledVector(g,.88).addScaledVector(n,.025);finger.position.copy(p.center).addScaledVector(g,.89).addScaledVector(n,-.025);thumb.visible=finger.visible=!free;
+  contactPositions(c,p).forEach((point,i)=>{fingers[i].position.copy(point);fingers[i].visible=!free;});
   const pos=[p.pelvis,p.chest,p.shoulder,p.elbow,p.wrist,p.grip];const quats=[p.pelvisQ,p.torsoQ,p.upperQ,p.upperQ,p.foreQ,p.handQ];axes.forEach((a,i)=>{a.visible=axesVisible;a.position.copy(pos[i]);a.quaternion.copy(quats[i]);});
   velocity.position.copy(disc.position);velocity.visible=axesVisible;const vel=free?.v??heldVelocity??v(1,0,0);velocity.setDirection(vel.clone().normalize());velocity.setLength(Math.min(vel.length()*.075,.95)||.65,.08,.04);
   normal.position.copy(disc.position);normal.visible=axesVisible;normal.setDirection(v(0,1,0).applyQuaternion(disc.quaternion));
@@ -70,12 +70,12 @@ export default function Scene(props:Props){
   const resize=()=>{const w=el.clientWidth,h=el.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};const observer=new ResizeObserver(resize);observer.observe(el);resize();
   let req=0;const render=()=>{
    const s=latest.current,p=samplePose(s.config,Math.min(s.time/s.config.duration,1.35)),free=s.time>s.sim.releaseTime?frameAt(s.sim,s.time-s.sim.releaseTime):null;
-   const phase=Math.min(s.time/s.config.duration,1.35),step=.00002,heldVelocity=samplePose(s.config,phase+step).center.sub(samplePose(s.config,phase-step).center).divideScalar(2*step*s.config.duration);
-   body.update(p,s.config,free,s.showAxes,heldVelocity);
+   const actual=discStateAt(s.sim,s.time);
+   body.update(p,s.config,free,s.showAxes,actual.v,actual);
    ghost.group.visible=s.compare&&!!s.reference;
    if(s.reference){const rs=s.reference,rp=samplePose(rs.config,Math.min(s.time/rs.config.duration,1.35)),rf=s.time>rs.releaseTime?frameAt(rs,s.time-rs.releaseTime):null;ghost.update(rp,rs.config,rf,false);}
    paths.visible=s.showTrace;base.position.x=s.config.rootX;base.position.z=s.config.rootZ;
-   const points=[p.pelvis,p.shoulder,p.elbow,p.wrist,free?.p??p.center,p.grip];labels.current.forEach((label,i)=>{if(!label)return;const point=points[i].clone().project(camera);label.style.display=s.showLabels&&point.z<1&&!(i===5&&free)?'block':'none';label.style.transform=`translate(${(point.x*.5+.5)*el.clientWidth+12}px,${(-point.y*.5+.5)*el.clientHeight-12}px)`;});
+   const points=[p.pelvis,p.shoulder,p.elbow,p.wrist,actual.p,p.grip];labels.current.forEach((label,i)=>{if(!label)return;const point=points[i].clone().project(camera);label.style.display=s.showLabels&&point.z<1&&!(i===5&&free)?'block':'none';label.style.transform=`translate(${(point.x*.5+.5)*el.clientWidth+12}px,${(-point.y*.5+.5)*el.clientHeight-12}px)`;});
    controls.update();renderer.render(scene,camera);req=requestAnimationFrame(render);
   };render();
   return()=>{cancelAnimationFrame(req);observer.disconnect();controls.dispose();dispose(scene);renderer.dispose();renderer.domElement.remove();runtime.current=null;};
@@ -85,13 +85,18 @@ export default function Scene(props:Props){
   else if(props.view==='side'){pos=at.clone().add(v(0,.15,5.5));camera.up.set(0,1,0);}
   else if(props.view==='front'){pos=at.clone().add(v(5,.25,0));camera.up.set(0,1,0);}
   else if(props.view==='flight'){const end=s.frames.at(-1)!.p,extent=Math.max(5,s.distance);at=s.release.pose.center.clone().lerp(end,.45);at.y=.8;pos=at.clone().add(v(-extent*.22,extent*.58,extent*.70));camera.up.set(0,1,0);}
-  else if(props.view==='grip'){at=s.release.pose.center.clone().lerp(s.release.pose.wrist,.4);pos=at.clone().add(v(.52,.5,.7));camera.up.set(0,1,0);}
+  else if(props.view==='grip'){
+   at=s.release.pose.center.clone().lerp(s.release.pose.wrist,.4);
+   const delta=v(.52,.5,.7);
+   if(props.config.grip?.enabled){delta.copy(s.release.pose.center).sub(s.release.pose.chest);delta.y=0;if(delta.length()<.01)delta.set(.5,0,.7);delta.normalize().multiplyScalar(.75);delta.y=.55;}
+   pos=at.clone().add(delta);camera.up.set(0,1,0);
+  }
   else{pos=at.clone().add(v(3.4,1.8,4.0));camera.up.set(0,1,0);}
   camera.position.copy(pos);controls.target.copy(at);controls.update();
  },[props.view,props.cameraNonce]);
  useEffect(()=>{const r=runtime.current;if(!r)return;while(r.paths.children.length){const child=r.paths.children[0];r.paths.remove(child);dispose(child);}
   const line=(points:T.Vector3[],color:number,dash=false)=>{const geometry=new T.BufferGeometry().setFromPoints(points);const material=dash?new T.LineDashedMaterial({color,dashSize:.08,gapSize:.06,transparent:true,opacity:.65}):new T.LineBasicMaterial({color,transparent:true,opacity:.8});const l=new T.Line(geometry,material);if(dash)l.computeLineDistances();r.paths.add(l);};
-  const hand=Array.from({length:130},(_,i)=>samplePose(props.config,props.config.releasePhase*i/129).center);line(hand,MAIN);
+  const hand=Array.from({length:130},(_,i)=>discStateAt(props.sim,props.sim.releaseTime*i/129).p);line(hand,MAIN);
   line(props.sim.frames.map(f=>f.p),ORANGE);line(props.sim.frames.map(f=>v(f.p.x,.014,f.p.z)),0xbdc9ca,true);
   const marker=new T.Mesh(new T.SphereGeometry(.025,16,12),new T.MeshBasicMaterial({color:ORANGE}));marker.position.copy(props.sim.release.pose.center);r.paths.add(marker);
   if(props.compare&&props.reference){line(props.reference.frames.map(f=>f.p),0x8ca2b0,true);line(Array.from({length:100},(_,i)=>samplePose(props.reference!.config,props.reference!.config.releasePhase*i/99).center),0x94adb9,true);}

@@ -197,8 +197,8 @@ export default function MotionEditor({config, time, onPause, onSeek, onChange}: 
       <div className="motion-axis-row">
         <span>动作轨道</span>
         <div className="motion-axis">
-          <button className="motion-release-label" style={{left:releaseLine}} title="跳至释放瞬间"
-            onClick={() => onSeek(duration * releasePhase)}>释放 {formatMs(toMs(releasePhase))} ms</button>
+          <button className="motion-release-label" style={{left:releaseLine}} title="跳至计划释放时刻"
+            onClick={() => onSeek(duration * releasePhase)}>{config.grip?.enabled?'计划释放':'释放'} {formatMs(toMs(releasePhase))} ms</button>
           {ticks.map(tick => <span key={tick} style={{left:percent(tick)}}>{Math.round(toMs(tick))}</span>)}
           <small>ms</small>
         </div>
@@ -262,7 +262,7 @@ export default function MotionEditor({config, time, onPause, onSeek, onChange}: 
       </p>
       <details className="motion-help">
         <summary>色块、曲线与释放线分别代表什么？</summary>
-        <p>色块标出中间关键帧的主要动作区间，并不代表肌肉开始或停止发力。细线是整条角度曲线，圆点是关键帧；平移或伸缩会连同前后过渡一起改变时序，角度值不变。释放线独立于各轨，离手后的动作不再影响飞盘。</p>
+        <p>色块标出中间关键帧的主要动作区间，并不代表肌肉开始或停止发力。细线是整条角度曲线，圆点是关键帧；平移或伸缩会连同前后过渡一起改变时序，角度值不变。释放线独立于各轨，标出计划释放时刻。真实握盘可因接触点滑出盘缘提前脱手，实际时刻见播放条和握盘接触分析。离手后的动作不再影响飞盘。</p>
         <p>各轨控制相对关节角，上游关节仍会带动下游连杆。小臂“展开”由肘关节控制，“轴向旋转”是另一条轨道。配置导出会保存全部时序；原有 JSON 编辑器仍可编辑基础角度曲线。</p>
       </details>
       <span className="motion-status" role="status" aria-live="polite">

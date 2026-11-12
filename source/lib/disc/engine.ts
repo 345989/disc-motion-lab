@@ -1,5 +1,6 @@
 import {Vector3 as V, Quaternion as Q} from 'three';
 import {sourcePhase, validateTiming, type Timing} from './timing.ts';
+import {defaultGrip, validateGrip, simulateGrip, heldStateAt, type GripConfig, type GripRun, type Motion} from './grip.ts';
 
 export const DEG = Math.PI / 180;
 export type ThrowType = 'backhand'|'forehand';
@@ -15,12 +16,12 @@ export type Config = {
  rootX:number;rootZ:number;heading:number;offsets:Record<Channel,number>;
  discMass:number;radius:number;inertiaAxial:number;inertiaTransverse:number;gripAngle:number;discPitch:number;discRoll:number;discYaw:number;
  air:boolean;rho:number;windX:number;windZ:number;liftScale:number;dragScale:number;momentScale:number;pitchDamping:number;rollDamping:number;spinDamping:number;
- commands:Commands|null; timing?:Timing;
+ commands:Commands|null; timing?:Timing; grip?:GripConfig;
 };
 export type Pose={pelvis:V;chest:V;shoulder:V;otherShoulder:V;elbow:V;wrist:V;grip:V;center:V;normal:V;discQ:Q;handQ:Q;torsoQ:Q;pelvisQ:Q;upperQ:Q;foreQ:Q;angles:Record<Channel,number>};
 export type Release={pose:Pose;v:V;omega:V;spin:number;offAxis:number;speed:number;azimuth:number;elevation:number;energy:number;armEnergy:number;trunkEnergy:number;contributions:{key:Channel;value:number}[]};
 export type Frame={t:number;p:V;v:V;q:Q;L:V;omega:V;alpha:number;cl:number;cd:number;lift:V;drag:V;outOfRange:boolean};
-export type Simulation={config:Config;release:Release;frames:Frame[];flightTime:number;distance:number;lateral:number;peakHeight:number;outOfRange:boolean;landed:boolean;releaseTime:number};
+export type Simulation={config:Config;release:Release;frames:Frame[];flightTime:number;distance:number;lateral:number;peakHeight:number;outOfRange:boolean;landed:boolean;releaseTime:number;grip:GripRun};
 const UP=new V(0,1,0),X=new V(1,0,0),Z=new V(0,0,1);
 export const PRESETS:Record<Preset,{name:string;short:string;description:string;focus:string}>={
  reference:{name:'基础平盘参考',short:'参考动作',description:'保持稳定盘面，肩肘展开与末段腕部加速配合。角度与时序为教学构造，并非唯一标准。',focus:'观察盘缘握点、腕部末段加速，以及盘心速度如何形成。'},
@@ -36,7 +37,7 @@ export function defaultConfig(type:ThrowType='backhand',preset:Preset='reference
  bodyMass:70,upperLength:.31,foreLength:.265,handLength:.105,shoulderWidth:.40,hipHeight:.92,shoulderHeight:1.37,rootX:0,rootZ:0,heading:0,
  offsets:{pelvis:0,torso:0,shoulder:0,elevation:0,elbow:0,forearm:0,wrist:0,wristPitch:0},
  discMass:.175,radius:.1347,inertiaAxial:.002352,inertiaTransverse:.001219,gripAngle:type==='backhand'?-90:90,discPitch:preset==='nose'?22:0,discRoll:0,discYaw:0,
- air:true,rho:1.23,windX:0,windZ:0,liftScale:1,dragScale:1,momentScale:1,pitchDamping:.0144,rollDamping:.0125,spinDamping:.0000341,commands:null};
+ air:true,rho:1.23,windX:0,windZ:0,liftScale:1,dragScale:1,momentScale:1,pitchDamping:.0144,rollDamping:.0125,spinDamping:.0000341,commands:null,grip:defaultGrip(type)};
 }
 function keys(ts:number[],vs:number[]):Keyframe[]{return ts.map((t,i)=>({t,value:vs[i]}));}
 export function getCommands(c:Config):Commands{
@@ -99,6 +100,18 @@ const alignmentCache=new Map<ThrowType,number>();
 function alignment(type:ThrowType){if(alignmentCache.has(type))return alignmentCache.get(type)!;const b=defaultConfig(type);const a=chain(b,sampleAngles(b,.9999),0).center;const d=chain(b,sampleAngles(b,1.0001),0).center.sub(a);const angle=-Math.atan2(d.z,d.x)/DEG;alignmentCache.set(type,angle);return angle;}
 export function samplePose(c:Config,phase:number,angles?:Record<Channel,number>){return chain(c,angles??sampleAngles(c,phase),alignment(c.throwType));}
 function omegaBetween(a:Q,b:Q,dt:number){const d=b.clone().multiply(a.clone().invert()).normalize();if(d.w<0)d.set(-d.x,-d.y,-d.z,-d.w);const len=Math.hypot(d.x,d.y,d.z);return len<1e-12?new V():new V(d.x,d.y,d.z).multiplyScalar(2*Math.atan2(len,d.w)/len/dt);}
+export function sampleMotion(c:Config,time:number):Motion {
+ const h=c.duration*.0001,phase=time/c.duration;
+ const pose=samplePose(c,phase),before=samplePose(c,phase-.0001),after=samplePose(c,phase+.0001);
+ return {pose,v:after.center.clone().sub(before.center).divideScalar(2*h),
+  acceleration:after.center.clone().add(before.center).addScaledVector(pose.center,-2).divideScalar(h*h),
+  omega:omegaBetween(before.discQ,after.discQ,2*h),
+  alpha:omegaBetween(pose.discQ,after.discQ,h).sub(omegaBetween(before.discQ,pose.discQ,h)).divideScalar(h)};
+}
+
+export function analyzeGrip(c:Config,step=1/960):GripRun {
+ return simulateGrip(c,time=>sampleMotion(c,time),step);
+}
 function rodEnergy(p1:V,p2:V,va:V,vb:V,m:number){const l=p2.clone().sub(p1);const v=va.clone().add(vb).multiplyScalar(.5);const om=l.clone().cross(vb.clone().sub(va)).divideScalar(Math.max(l.lengthSq(),1e-8));return .5*m*v.lengthSq()+m*l.lengthSq()*om.lengthSq()/24;}
 export function getRelease(c:Config):Release{
  const phase=c.releasePhase,h=.00002,p=samplePose(c,phase),before=samplePose(c,phase-h),after=samplePose(c,phase+h),dt=2*h*c.duration;
@@ -131,7 +144,19 @@ export function aerodynamic(c:Config,v:V,q:Q,omega:V){
 export function angularVelocity(c:Config,q:Q,L:V){const n=UP.clone().applyQuaternion(q);return L.clone().divideScalar(c.inertiaTransverse).addScaledVector(n,(1/c.inertiaAxial-1/c.inertiaTransverse)*L.dot(n));}
 function advanceQ(q:Q,om:V,h:number){const len=om.length();return len>1e-10?new Q().setFromAxisAngle(om.clone().divideScalar(len),len*h).multiply(q).normalize():q.clone();}
 export function simulate(c:Config,dt=1/480):Simulation{
- const release=getRelease(c);let p=release.pose.center.clone(),v=release.v.clone(),q=release.pose.discQ.clone();
+ const grip=analyzeGrip(c,dt/2);
+ let release=getRelease(c);
+ if(c.grip?.enabled && (grip.firstSlipTime!==null || grip.releaseTime===0)){
+  const actual=heldStateAt(grip,grip.releaseTime);
+  const planned=getRelease({...c,releasePhase:grip.releaseTime/c.duration});
+  const normal=UP.clone().applyQuaternion(actual.q),spin=actual.omega.dot(normal);
+  const offAxis=actual.omega.clone().addScaledVector(normal,-spin).length();
+  release={...planned,pose:{...planned.pose,center:actual.p.clone(),discQ:actual.q.clone(),normal},
+   v:actual.v.clone(),omega:actual.omega.clone(),spin,offAxis,speed:actual.v.length(),
+   azimuth:Math.atan2(actual.v.z,actual.v.x)/DEG,elevation:Math.atan2(actual.v.y,Math.hypot(actual.v.x,actual.v.z))/DEG,
+   energy:.5*c.discMass*actual.v.lengthSq()+.5*c.inertiaAxial*spin*spin+.5*c.inertiaTransverse*offAxis*offAxis};
+ }
+ let p=release.pose.center.clone(),v=release.v.clone(),q=release.pose.discQ.clone();
  let L=release.omega.clone().multiplyScalar(c.inertiaTransverse).addScaledVector(release.pose.normal,(c.inertiaAxial-c.inertiaTransverse)*release.spin);
  const frames:Frame[]=[];let peakHeight=p.y,outOfRange=false,landed=false,t=0;
  const floor=(qq:Q)=>c.radius*Math.sqrt(Math.max(0,1-UP.clone().applyQuaternion(qq).y**2))+.012;
@@ -147,7 +172,13 @@ export function simulate(c:Config,dt=1/480):Simulation{
   if(i%4===0)frames.push(frame());
  }
  if(frames.at(-1)!.t!==t)frames.push(frame());
- const last=frames.at(-1)!;return {config:c,release,frames,flightTime:last.t,distance:Math.hypot(last.p.x-release.pose.center.x,last.p.z-release.pose.center.z),lateral:last.p.z-release.pose.center.z,peakHeight,outOfRange,landed,releaseTime:c.duration*c.releasePhase};
+ const last=frames.at(-1)!;return {config:c,release,frames,flightTime:last.t,distance:Math.hypot(last.p.x-release.pose.center.x,last.p.z-release.pose.center.z),lateral:last.p.z-release.pose.center.z,peakHeight,outOfRange,landed,releaseTime:grip.releaseTime,grip};
+}
+export function discStateAt(sim:Simulation,time:number){
+ if(time>=sim.releaseTime)return frameAt(sim,time-sim.releaseTime);
+ if(sim.config.grip?.enabled)return heldStateAt(sim.grip,time);
+ const motion=sampleMotion(sim.config,time);
+ return {t:time,p:motion.pose.center,q:motion.pose.discQ,v:motion.v,omega:motion.omega};
 }
 export function frameAt(sim:Simulation,t:number){const fs=sim.frames;if(t<=0)return fs[0];if(t>=fs.at(-1)!.t)return fs.at(-1)!;let lo=0,hi=fs.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(fs[m].t>t)hi=m;else lo=m;}const a=fs[lo],b=fs[hi],u=(t-a.t)/(b.t-a.t);return {...a,t,p:a.p.clone().lerp(b.p,u),v:a.v.clone().lerp(b.v,u),q:a.q.clone().slerp(b.q,u),L:a.L.clone().lerp(b.L,u),omega:a.omega.clone().lerp(b.omega,u),alpha:a.alpha+(b.alpha-a.alpha)*u};}
 export const SCHEMA={duration:[.3,1.5],releasePhase:[.7,1.15],bodyMass:[35,130],upperLength:[.2,.45],foreLength:[.17,.4],handLength:[.05,.17],shoulderWidth:[.25,.6],hipHeight:[.6,1.2],shoulderHeight:[1,1.85],rootX:[-2,2],rootZ:[-2,2],heading:[-180,180],discMass:[.1,.25],radius:[.1,.16],inertiaAxial:[.0008,.004],inertiaTransverse:[.0004,.003],gripAngle:[-180,180],discPitch:[-40,40],discRoll:[-60,60],discYaw:[-180,180],rho:[0,1.6],windX:[-10,10],windZ:[-10,10],liftScale:[.1,2],dragScale:[.1,2],momentScale:[0,2],pitchDamping:[0,.04],rollDamping:[0,.04],spinDamping:[0,.0002]} as const;
@@ -164,6 +195,11 @@ export function validateConfig(value:unknown):Config{
  if(v.commands!=null){const cmds={} as Commands;for(const key of CHANNELS){const arr=(v.commands as Record<string,unknown>)[key];if(!Array.isArray(arr)||arr.length<2||arr.length>40)throw new Error(`${key}: 需要 2～40 个关键帧`);cmds[key]=arr.map((x,i)=>{if(!x||typeof x.t!=='number'||typeof x.value!=='number'||!Number.isFinite(x.t)||!Number.isFinite(x.value)||x.t<0||x.t>2||Math.abs(x.value)>360||(i>0&&(x.t-arr[i-1].t<.005||Math.abs(x.value-arr[i-1].value)/(x.t-arr[i-1].t)>1800)))throw new Error(`${key}: 时间步距≥0.005，相邻角度变化率≤1800°/相位，t∈[0,2]，角度∈[−360,360]`);return {t:x.t,value:x.value};});}c.commands=cmds;}
  const timing=validateTiming(v.timing,getCommands(c),CHANNELS);
  if(timing)c.timing=timing;
+ c.grip=validateGrip(v.grip,c.throwType);
  return c;
 }
-export function serializeSimulation(sim:Simulation){return {config:sim.config,release:{position:sim.release.pose.center.toArray(),quaternion:sim.release.pose.discQ.toArray(),velocity:sim.release.v.toArray(),angularVelocity:sim.release.omega.toArray(),speed:sim.release.speed,spin:sim.release.spin,energy:sim.release.energy,armEnergy:sim.release.armEnergy,trunkEnergy:sim.release.trunkEnergy,contributions:sim.release.contributions},metrics:{distance:sim.distance,lateral:sim.lateral,flightTime:sim.flightTime,outOfRange:sim.outOfRange,landed:sim.landed},frames:sim.frames.map(f=>({t:f.t,p:f.p.toArray(),v:f.v.toArray(),quaternion:f.q.toArray(),angularMomentum:f.L.toArray(),angularVelocity:f.omega.toArray(),alpha:f.alpha,outOfRange:f.outOfRange}))};}
+export function serializeSimulation(sim:Simulation){return {config:sim.config,grip:serializeGrip(sim.grip),releaseTime:sim.releaseTime,release:{position:sim.release.pose.center.toArray(),quaternion:sim.release.pose.discQ.toArray(),velocity:sim.release.v.toArray(),angularVelocity:sim.release.omega.toArray(),speed:sim.release.speed,spin:sim.release.spin,energy:sim.release.energy,armEnergy:sim.release.armEnergy,trunkEnergy:sim.release.trunkEnergy,contributions:sim.release.contributions,contributionBasis:'prescribed-motion-at-actual-release'},metrics:{distance:sim.distance,lateral:sim.lateral,flightTime:sim.flightTime,outOfRange:sim.outOfRange,landed:sim.landed},frames:sim.frames.map(f=>({t:f.t,p:f.p.toArray(),v:f.v.toArray(),quaternion:f.q.toArray(),angularMomentum:f.L.toArray(),angularVelocity:f.omega.toArray(),alpha:f.alpha,outOfRange:f.outOfRange}))};}
+
+export function serializeGrip(grip:GripRun){
+ return {...grip,states:grip.states.map(state=>({t:state.t,p:state.p.toArray(),quaternion:state.q.toArray(),v:state.v.toArray(),omega:state.omega.toArray()}))};
+}

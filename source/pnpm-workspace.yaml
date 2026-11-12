@@ -1,0 +1,3 @@
+# esbuild installs and checks the platform binary used by build.mjs.
+allowBuilds:
+  esbuild: true
